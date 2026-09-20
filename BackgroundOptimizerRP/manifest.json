@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Background Optimizer 1.21.11",
+    "description": "Custom Minecraft Bedrock main-menu background slot. Replace textures/ui/BACKGROUND/MENU_BG.png with your image.",
+    "uuid": "4c3b0d0e-7b5b-4a0e-ae8b-4e7b7c0d2a11",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 11]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "a8b1e3d9-0f8b-4e2c-9a11-5c2d7e6f4b22",
+      "version": [1, 0, 0]
+    }
+  ]
+}
