@@ -1,0 +1,4 @@
+Put the six Java title-screen panorama PNG files in this folder:
+panorama_0.png through panorama_5.png
+
+See ../README.md for details.
