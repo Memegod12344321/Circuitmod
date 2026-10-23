@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090909">
+<title>Cursed.exe — Horror Forge</title>
+<style>
+:root{color-scheme:dark;--red:#ff2638;--dim:#8b9099;--panel:#101114;--line:#2a2c32}
+*{box-sizing:border-box}body{margin:0;background:#08090b;color:#e8e9ec;font:15px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:100vh}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#fff0 0 3px,#ffffff05 4px 5px);z-index:3}
+main{width:min(920px,100%);margin:auto;padding:26px 18px 50px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding-bottom:15px}.logo{font-weight:900;letter-spacing:.13em;font-size:clamp(20px,5vw,32px)}.logo span{color:var(--red)}.status{font-size:11px;color:#ff6470;border:1px solid #63232a;padding:5px 8px;white-space:nowrap}
+.hero{padding:52px 0 30px}.eyebrow{color:var(--red);letter-spacing:.2em;font-size:11px}.hero h1{font-size:clamp(30px,7vw,58px);line-height:1.02;margin:13px 0}.hero p{color:var(--dim);max-width:650px}.terminal{border:1px solid #63232a;background:#0d0b0e;box-shadow:0 0 35px #ff26380c}.bar{background:#191014;padding:10px 14px;border-bottom:1px solid #63232a;color:#ff6874;font-size:12px;display:flex;justify-content:space-between}.body{padding:20px}.prompt{color:var(--red);margin-bottom:12px}label{display:block;color:#b7bac2;font-size:12px;margin:0 0 8px}textarea{display:block;width:100%;min-height:135px;resize:vertical;background:#07080a;border:1px solid #353740;color:#f3f3f4;padding:14px;font:inherit;outline:none}textarea:focus{border-color:var(--red)}button{margin-top:13px;width:100%;background:var(--red);color:#09090b;border:0;padding:14px;font:900 13px ui-monospace,monospace;letter-spacing:.13em;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.hint{font-size:11px;color:var(--dim);margin-top:10px}.output{margin-top:18px;display:none;border:1px solid var(--line);background:#08090b;padding:16px;overflow-wrap:anywhere}.output h2{color:var(--red);font-size:13px}.output pre{white-space:pre-wrap;color:#d6d8dd;font-size:12px}.error{color:#ff6c7a}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:24px}.tile{border:1px solid var(--line);padding:16px;background:var(--panel)}.tile b{display:block;color:#ff6470;margin-bottom:6px}.tile p{margin:0;color:var(--dim);font-size:12px}.foot{margin-top:30px;border-top:1px solid var(--line);padding-top:16px;color:#666b75;font-size:11px}code{color:#ff8790}
+</style>
+</head>
+<body><main>
+<header class="top"><div class="logo">CURSED<span>.EXE</span></div><div class="status">● HORROR SYSTEM ONLINE</div></header>
+<section class="hero"><div class="eyebrow">FORGE 1.20.1 // ENTITY LAB</div><h1>MAKE SOMETHING<br><span style="color:var(--red)">WRONG.</span></h1><p>Describe the thing you should never meet in a Minecraft world. Cursed.exe turns your idea into a structured horror-mob specification.</p></section>
+<section class="terminal"><div class="bar"><span>root@cursed:~ / entity_generator</span><span>v0.1.0</span></div><div class="body"><div class="prompt">> INITIALIZE ENTITY GENERATION_</div>
+<form id="form"><label for="prompt">DESCRIBE YOUR NIGHTMARE</label><textarea id="prompt" minlength="8" maxlength="1200" required placeholder="A tall figure that follows the player from far away, vanishes when approached, and appears only during thunderstorms..."></textarea><button id="submit" type="submit">[ GENERATE HORROR SPEC ]</button><a href="https://github.com/Memegod12344321/Circuitmod/actions" target="_blank" rel="noopener" style="display:block;margin-top:13px;text-align:center;background:#17191e;color:#ff6470;border:1px solid #63232a;padding:14px;text-decoration:none;font-weight:900;letter-spacing:.1em">[ GENERATE REAL MOD JAR ON GITHUB ]</a><div class="hint">Requires the API service to be running with OPENAI_API_KEY configured. No generated code is executed.</div></form>
+<div id="output" class="output" aria-live="polite"></div></div></section>
+<section class="grid"><div class="tile"><b>01 / DEFINE</b><p>Choose its behavior, stats, spawn conditions, and unsettling event.</p></div><div class="tile"><b>02 / VALIDATE</b><p>Output is checked against strict limits before it is returned.</p></div><div class="tile"><b>03 / BUILD</b><p>The Forge 1.20.1 mod prototype can be compiled by GitHub Actions.</p></div></section>
+<footer class="foot">CURSED.EXE // EXPERIMENTAL BUILD · Forge 1.20.1 · Java 17<br>AI output is a specification only; it is not yet a one-click compiled custom mod.</footer>
+</main>
+<script>
+const form=document.querySelector('#form'),button=document.querySelector('#submit'),output=document.querySelector('#output');
+form.addEventListener('submit',async e=>{e.preventDefault();button.disabled=true;button.textContent='[ GENERATING SPEC... ]';output.style.display='block';output.textContent='> REQUESTING AI SPECIFICATION...';try{const res=await fetch('/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:document.querySelector('#prompt').value})});const data=await res.json();if(!res.ok)throw new Error(data.detail||'Request failed');const pre=document.createElement('pre');pre.textContent=JSON.stringify(data,null,2);output.replaceChildren();const h=document.createElement('h2');h.textContent='> SPEC GENERATED';output.append(h,pre)}catch(err){output.textContent='> ERROR: '+err.message}finally{button.disabled=false;button.textContent='[ GENERATE HORROR SPEC ]'}});
+</script></body></html>
