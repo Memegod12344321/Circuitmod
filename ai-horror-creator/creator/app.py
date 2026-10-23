@@ -1,12 +1,15 @@
 import os
 import re
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="AI Horror Mod Creator", version="0.1.0")
+app = FastAPI(title="Cursed.exe", version="0.1.0")
+WEB_DIR = Path(__file__).resolve().parent
 
 
 class GenerateRequest(BaseModel):
@@ -25,9 +28,18 @@ class HorrorSpec(BaseModel):
     event: Literal["whisper", "distant_footsteps", "lights_out", "none"]
 
 
+@app.get("/")
+def home():
+    return FileResponse(WEB_DIR / "index.html")
+
+
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "ai-horror-creator", "api_key_configured": bool(os.getenv("OPENAI_API_KEY"))}
+    return {
+        "ok": True,
+        "service": "Cursed.exe",
+        "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
+    }
 
 
 @app.post("/generate", response_model=HorrorSpec)
@@ -65,7 +77,6 @@ def generate(request: GenerateRequest):
         if not raw:
             raise ValueError("The model returned an empty response.")
         spec = HorrorSpec.model_validate_json(raw)
-        # Normalize IDs instead of trusting model-provided identifier strings.
         normalized = re.sub(r"[^a-z0-9_]+", "_", spec.entity_id.lower()).strip("_")
         spec.entity_id = normalized[:31] or "custom_stalker"
         return spec
