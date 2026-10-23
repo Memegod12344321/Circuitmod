@@ -13,7 +13,7 @@ public final class ModItems {
 
     public static final RegistryObject<Item> STALKER_SPAWN_EGG = ITEMS.register(
             "stalker_spawn_egg",
-            () -> new SpawnEggItem(ModEntities.STALKER, 0x17151C, 0x8D101C, new Item.Properties()));
+            () -> new SpawnEggItem(ModEntities.STALKER.get(), 0x17151C, 0x8D101C, new Item.Properties()));
 
     private ModItems() {}
 }
