@@ -1,7 +1,12 @@
-name: Build Cursed.exe (Forge 1.20.1)
+name: Build Cursed.exe AI Horror Mod (Forge 1.20.1)
 
 on:
   workflow_dispatch:
+    inputs:
+      horror_prompt:
+        description: "Describe the actual horror mod to generate (leave blank to build the base template)"
+        required: false
+        type: string
   push:
     paths:
       - "ai-horror-creator/**"
@@ -26,6 +31,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Python
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.horror_prompt != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install AI generator dependencies
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.horror_prompt != '' }}
+        run: python -m pip install --upgrade openai
+
+      - name: Generate actual Forge Java source with AI
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.horror_prompt != '' }}
+        env:
+          HORROR_PROMPT: ${{ inputs.horror_prompt }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4.1-mini
+        run: python creator/generate_forge_mod.py
+
       - name: Set up Gradle 8.8
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -39,4 +62,14 @@ jobs:
         with:
           name: cursed-exe-forge1201
           path: ai-horror-creator/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload generated source and AI summary
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.horror_prompt != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cursed-exe-generated-source
+          path: |
+            ai-horror-creator/src/main/java/com/memegod/aihorrorcreator/
+            ai-horror-creator/AI_GENERATED_MOD_SUMMARY.md
           if-no-files-found: error
