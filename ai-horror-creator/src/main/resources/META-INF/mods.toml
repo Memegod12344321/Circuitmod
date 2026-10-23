@@ -7,7 +7,7 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 description='''
-A Forge 1.20.1 horror-mod creator prototype with The Stalker encounter.
+Cursed.exe: a Forge 1.20.1 horror-mod creator prototype with The Stalker encounter.
 '''
 
 [[dependencies.${mod_id}]]
