@@ -85,12 +85,7 @@ def generate_project(request: GenerateRequest):
         raise HTTPException(status_code=500, detail="Forge template files are not present on this deployment.")
 
     substitutions = {
-        "aihorrorcreator": spec.entity_id,
-        "AIHorrorCreator": "CursedHorrorMod",
-        "StalkerEntity": "GeneratedHorrorEntity",
         "stalker": spec.entity_id,
-        "AI Horror Creator": spec.name,
-        "Cursed.exe": spec.name,
         "Zombie.createAttributes().build()": (
             "Zombie.createAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH, "
             + str(spec.health) + "D).add(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED, "
@@ -119,7 +114,6 @@ def generate_project(request: GenerateRequest):
                         content = content.replace(old, new)
                     if rel.as_posix() == "gradle.properties":
                         content = re.sub(r"(?m)^mod_name=.*$", lambda _: "mod_name=" + spec.name, content)
-                        content = re.sub(r"(?m)^mod_id=.*$", lambda _: "mod_id=" + spec.entity_id, content)
                     archive.writestr(rel.as_posix(), content)
                 else:
                     archive.write(path, rel.as_posix())
