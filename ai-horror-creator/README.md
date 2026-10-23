@@ -1,38 +1,45 @@
 # Cursed.exe — AI Horror Mod Creator
 
-**Cursed.exe** is the Forge 1.20.1 horror-mod creator prototype inside this repository. It is isolated in its own folder, so the existing Circuitmod, Stalker mod, compiler, website, and workflows are preserved.
+Cursed.exe is a prompt-driven Minecraft Forge 1.20.1 horror mod generator, maintained in its own folder inside the existing Circuitmod repository.
 
-## Included
-- A separate Forge 1.20.1 / Java 17 mod project.
-- A prototype horror mob, **The Stalker**, summonable with `/summon aihorrorcreator:stalker`.
-- A server-side nighttime encounter event.
-- A dark terminal-style Cursed.exe prompt page.
-- A Python API that turns a horror-mob prompt into a validated JSON specification using an OpenAI API key. It never executes generated code.
-- GitHub Actions workflow that builds the mod and uploads the JAR.
+## What it is meant to do
 
-## Current limits
-The AI currently produces a validated specification; it does **not** yet convert the specification into a new compiled mob automatically. The Stalker reuses the vanilla zombie model and AI. Custom models, original sound assets, advanced behaviors, and the full prompt-to-compiled-mod pipeline are future work.
+1. Describe a horror mod in plain English.
+2. Send the prompt to an AI model that generates actual Java source files for Forge 1.20.1.
+3. Compile those sources using GitHub Actions, Java 17, and ForgeGradle.
+4. Download the built mod JAR and generated source as workflow artifacts.
 
-## Build on GitHub (works from Android)
-1. Open the repository's **Actions** tab.
-2. Select **Build Cursed.exe (Forge 1.20.1)**.
-3. Choose **Run workflow** on the `ai-horror-forge1201` branch.
-4. Wait for the workflow to finish successfully.
-5. Open the run's artifacts and download `cursed-exe-forge1201`.
-6. Extract the artifact ZIP and place the JAR in your Forge 1.20.1 instance's `mods` folder.
+The generator constrains output to Java files under the dedicated mod package, validates file paths and output sizes, and never executes AI-produced shell commands. Generated source is still AI-written code: compilation and in-game testing matter.
 
-The workflow uses Java 17 and Gradle 8.8.
+## Setup once (from your phone)
 
-## Run the prompt API
-Python 3.11+ is required:
+1. Open the repository's **Settings → Secrets and variables → Actions**.
+2. Add a repository secret named `OPENAI_API_KEY` with your own API key.
+3. Open the **Actions** tab.
+4. Select **Build Cursed.exe AI Horror Mod (Forge 1.20.1)**.
+5. Tap **Run workflow** and enter a detailed prompt in **Describe the actual horror mod to generate**.
+6. Run it and wait for both AI generation and the Forge build to succeed.
+7. Open the successful run. Download `cursed-exe-forge1201` for the JAR and `cursed-exe-generated-source` for the Java sources and summary.
+8. Put the JAR in the `mods` folder of a Minecraft Forge 1.20.1 installation.
 
-```sh
-cd ai-horror-creator/creator
-python -m pip install -r requirements.txt
-export OPENAI_API_KEY="your-key"
-uvicorn app:app --host 127.0.0.1 --port 8000
+Never commit your API key to a source file or workflow.
+
+## Example prompt
+
+```text
+Create a tall, unsettling creature for Forge 1.20.1. It should stalk the nearest player at a distance, retreat when directly looked at, and occasionally approach at night. Give it 70 health, make it faster than a zombie, and limit natural encounters to at most one nearby creature per player. Use a vanilla renderer if custom assets are unavailable. Make all behavior server-side and compatible with multiplayer.
 ```
 
-Open `http://127.0.0.1:8000` for the Cursed.exe interface. The Generate button sends the prompt to `POST /generate`.
+## Local prompt API
 
-**Never commit your API key to GitHub.** The API returns a safe JSON specification, not a compiled JAR.
+The FastAPI interface can generate a validated design specification. The actual Java source generation and compilation currently run in GitHub Actions, where the API secret is configured. The source-generation script is `creator/generate_forge_mod.py`.
+
+## Honest limitations
+
+- The generated JAR must pass the build and should be tested in-game before use.
+- AI output may still contain API mistakes; a failed compile is not a successful mod.
+- Custom textures, models, and sounds are not automatically created by this Java-source generator.
+- Some complex requested behavior may be approximated or need another generation/fix cycle.
+- The base template uses Minecraft Forge 1.20.1 and Java 17.
+
+Existing files outside `ai-horror-creator/` are not overwritten by this generator.
