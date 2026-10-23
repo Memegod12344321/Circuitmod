@@ -1,15 +1,18 @@
+import io
 import os
 import re
+import zipfile
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="Cursed.exe", version="0.1.0")
+app = FastAPI(title="Cursed.exe", version="0.2.0")
 WEB_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = WEB_DIR.parent
 
 
 class GenerateRequest(BaseModel):
@@ -28,6 +31,37 @@ class HorrorSpec(BaseModel):
     event: Literal["whisper", "distant_footsteps", "lights_out", "none"]
 
 
+def get_spec(prompt: str) -> HorrorSpec:
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=503, detail="Set OPENAI_API_KEY in the server environment first.")
+    try:
+        response = OpenAI().chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            messages=[
+                {"role": "system", "content": (
+                    "Design a Minecraft Forge 1.20.1 horror entity specification. "
+                    "Return only values matching the supplied JSON schema. Keep names "
+                    "Minecraft-appropriate. Do not output code, commands, or file paths."
+                )},
+                {"role": "user", "content": prompt},
+            ],
+            response_format={"type": "json_schema", "json_schema": {
+                "name": "horror_entity_spec", "strict": True,
+                "schema": HorrorSpec.model_json_schema()
+            }},
+        )
+        raw = response.choices[0].message.content
+        if not raw:
+            raise ValueError("The model returned an empty response.")
+        spec = HorrorSpec.model_validate_json(raw)
+        spec.entity_id = re.sub(r"[^a-z0-9_]+", "_", spec.entity_id.lower()).strip("_")[:31] or "custom_stalker"
+        return spec
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Generation or validation failed: {type(exc).__name__}")
+
+
 @app.get("/")
 def home():
     return FileResponse(WEB_DIR / "index.html")
@@ -35,50 +69,78 @@ def home():
 
 @app.get("/health")
 def health():
-    return {
-        "ok": True,
-        "service": "Cursed.exe",
-        "api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
-    }
+    return {"ok": True, "service": "Cursed.exe", "api_key_configured": bool(os.getenv("OPENAI_API_KEY"))}
 
 
 @app.post("/generate", response_model=HorrorSpec)
 def generate(request: GenerateRequest):
-    if not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(status_code=503, detail="Set OPENAI_API_KEY in the server environment first.")
+    return get_spec(request.prompt)
 
-    schema = HorrorSpec.model_json_schema()
+
+@app.post("/generate-project")
+def generate_project(request: GenerateRequest):
+    """Create a downloadable Forge 1.20.1 source project from a validated spec."""
+    spec = get_spec(request.prompt)
+    if not (PROJECT_DIR / "build.gradle").is_file():
+        raise HTTPException(status_code=500, detail="Forge template files are not present on this deployment.")
+
+    substitutions = {
+        "aihorrorcreator": spec.entity_id,
+        "AIHorrorCreator": "CursedHorrorMod",
+        "StalkerEntity": "GeneratedHorrorEntity",
+        "stalker": spec.entity_id,
+        "AI Horror Creator": spec.name,
+        "Cursed.exe": spec.name,
+        "Zombie.createAttributes().build()": (
+            "Zombie.createAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH, "
+            + str(spec.health) + "D).add(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED, "
+            + str(spec.movement_speed) + "D).add(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE, "
+            + str(spec.damage) + "D).build()"
+        ),
+    }
+    buf = io.BytesIO()
     try:
-        client = OpenAI()
-        response = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Design a Minecraft Forge 1.20.1 horror entity specification. "
-                        "Return only values matching the supplied JSON schema. Keep names "
-                        "Minecraft-appropriate. Do not output Java code, commands, file paths, "
-                        "or instructions. Balance stats within the schema limits."
-                    ),
-                },
-                {"role": "user", "content": request.prompt},
-            ],
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "horror_entity_spec",
-                    "strict": True,
-                    "schema": schema,
-                },
-            },
-        )
-        raw = response.choices[0].message.content
-        if not raw:
-            raise ValueError("The model returned an empty response.")
-        spec = HorrorSpec.model_validate_json(raw)
-        normalized = re.sub(r"[^a-z0-9_]+", "_", spec.entity_id.lower()).strip("_")
-        spec.entity_id = normalized[:31] or "custom_stalker"
-        return spec
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as archive:
+            for path in PROJECT_DIR.rglob("*"):
+                if not path.is_file():
+                    continue
+                rel = path.relative_to(PROJECT_DIR)
+                if rel.parts[0] in {"creator", "build", ".gradle", "run", "run-server"}:
+                    continue
+                if rel.suffix == ".java" or rel.as_posix() in {
+                    "build.gradle", "settings.gradle", "gradle.properties",
+                    "src/main/resources/META-INF/mods.toml",
+                }:
+                    try:
+                        content = path.read_text(encoding="utf-8")
+                    except UnicodeDecodeError:
+                        continue
+                    for old, new in substitutions.items():
+                        content = content.replace(old, new)
+                    if rel.as_posix() == "gradle.properties":
+                        content = re.sub(r"(?m)^mod_name=.*$", lambda _: "mod_name=" + spec.name, content)
+                        content = re.sub(r"(?m)^mod_id=.*$", lambda _: "mod_id=" + spec.entity_id, content)
+                    archive.writestr(rel.as_posix(), content)
+                else:
+                    archive.write(path, rel.as_posix())
+            readme = (
+                f"# {spec.name}\n\nGenerated by Cursed.exe for Minecraft Forge 1.20.1 (Java 17).\n\n"
+                f"- Entity ID: {spec.entity_id}\n- Description: {spec.description}\n"
+                f"- Health: {spec.health}\n- Movement speed: {spec.movement_speed}\n"
+                f"- Attack damage: {spec.damage}\n- Requested behavior: {spec.behavior}\n"
+                f"- Spawn preference: {spec.spawn_time}\n- Requested event: {spec.event}\n\n"
+                "The entity uses the vanilla zombie model and baseline AI. Requested behavior/event fields "
+                "are recorded here but are not all implemented as custom mechanics yet. Build with Java 17 "
+                "and Gradle 8.8 using gradle build. Review the source before installing.\n"
+            )
+            archive.writestr("GENERATED_HORROR_SPEC.md", readme)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Generation or validation failed: {type(exc).__name__}")
+        raise HTTPException(status_code=500, detail=f"Project packaging failed: {type(exc).__name__}")
+
+    safe_name = re.sub(r"[^a-zA-Z0-9_-]+", "-", spec.entity_id).strip("-") or "horror-mob"
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="cursed-exe-{safe_name}-forge1201.zip"'},
+    )
